@@ -1,6 +1,4 @@
-use std::cmp;
-
-pub fn div_rem(a: i64, b: i64) -> [i64; 2] {
+pub fn div_rem(a: i64, b: i64) -> (i64, i64) {
     let remainder = if a < 0 {
         a % b + i64::abs(b)
     } else {
@@ -8,20 +6,19 @@ pub fn div_rem(a: i64, b: i64) -> [i64; 2] {
     };
     let quotient = (a - remainder) / b;
 
-    [quotient, remainder]
+    (quotient, remainder)
 }
 
-fn gcd_naive(a: i64, b: i64) -> i64 {
-    let mut divisor: i64 = 1;
-
-    let upper = cmp::max(i64::abs(a), i64::abs(b));
-    for d in 2..upper+1 {
-        if a % d == 0 && b % d == 0 {
-            divisor = d;
-        }
+pub fn euclidean_algorithm(a: i64, b: i64) -> String {
+    if b == 0 {
+        return String::from("");
     }
 
-    divisor
+    let (q, r) = div_rem(a, b);
+    let mut equation = String::from(format!("{} == {} * {} + {}\n", a, b, q, r));
+    equation.push_str(&euclidean_algorithm(b, r)[..]);
+
+    equation
 }
 
 pub fn gcd(a: i64, b: i64) -> i64 {
@@ -32,22 +29,24 @@ pub fn gcd(a: i64, b: i64) -> i64 {
     }
 }
 
-fn bezout_helper(a: i64, b: i64, prev: [i64; 2], curr: [i64; 2]) -> [i64; 2] {
+fn bezout_helper(a: i64, b: i64, prev: (i64, i64), curr: (i64, i64)) -> (i64, i64) {
     if b == 0 {
         return prev;
     }
-    let [q, r] = div_rem(a, b);
-    let x = prev[0] - curr[0] * q;
-    let y = prev[1] - curr[1] * q;
+    let (q, r) = div_rem(a, b);
+    let x = prev.0 - curr.0 * q;
+    let y = prev.1 - curr.1 * q;
 
-    bezout_helper(b, r, curr, [x, y])
+    bezout_helper(b, r, curr, (x, y))
 }
 
-pub fn bezout(a: i64, b: i64) -> [i64; 2] {
-    let [mut x, mut y] = bezout_helper(i64::abs(a), i64::abs(b), [1, 0], [0, 1]);
-    if a < 0 { x *= -1 };
-    if b < 0 { y *= -1} ;
-    [x, y]
+pub fn bezout(a: i64, b: i64) -> (i64, i64) {
+    match (a, b) {
+        (0, 0) => panic!("gcd(0, 0) is undefined"),
+        (a, 0) => (i64::signum(a), 0),
+        (0, b) => (0, i64::signum(b)),
+        _ => bezout_helper(a, b, (1, 0), (0, 1))
+    }
 }
 
 pub fn lcm(a: i64, b: i64) -> i64 {
@@ -69,7 +68,7 @@ mod tests {
             let a = a as i64;
             let b = b as i64;
             prop_assume!(b != 0);
-            let [q, r] = div_rem(a, b);
+            let (q, r) = div_rem(a, b);
             prop_assert!(0 <= r);
             prop_assert!(r < i64::abs(b));
             prop_assert_eq!(q*b + r, a);
@@ -86,16 +85,11 @@ mod tests {
         }
 
         #[test]
-        fn test_gcd_against_naive(a in 1i64..1000, b in 1i64..1000) {
-            prop_assert_eq!(gcd_naive(a, b), gcd(a, b));
-        }
-
-        #[test]
         fn test_bezout(a: i32, b: i32) {
             prop_assume!(a != 0 || b != 0);
             let a = a as i64;
             let b = b as i64;
-            let [x, y] = bezout(a, b);
+            let (x, y) = bezout(a, b);
             prop_assert_eq!(a*x + b*y, gcd(a, b));
         }
 
@@ -111,6 +105,12 @@ mod tests {
             prop_assert!(m % b == 0);
             prop_assert_eq!(lcm(a/d, b/d), i64::abs((a/d)*(b/d)));
         }
+    }
+
+    #[test]
+    fn test_euclidean_algorithm() {
+        let s = "322 == 70 * 4 + 42\n70 == 42 * 1 + 28\n42 == 28 * 1 + 14\n28 == 14 * 2 + 0\n";
+        assert_eq!(euclidean_algorithm(322, 70).as_str(), s);
     }
 
     #[test]
