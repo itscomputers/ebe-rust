@@ -15,10 +15,9 @@ pub fn euclidean_algorithm(a: i64, b: i64) -> String {
     }
 
     let (q, r) = div_rem(a, b);
-    let mut equation = String::from(format!("{} == {} * {} + {}\n", a, b, q, r));
-    equation.push_str(&euclidean_algorithm(b, r)[..]);
+    let equation = format!("{} == {} * {} + {}", a, b, q, r);
 
-    equation
+    format!("{}\n{}", equation, euclidean_algorithm(b, r))
 }
 
 pub fn gcd(a: i64, b: i64) -> i64 {
@@ -44,8 +43,12 @@ pub fn bezout(a: i64, b: i64) -> (i64, i64) {
     match (a, b) {
         (0, 0) => panic!("gcd(0, 0) is undefined"),
         (a, 0) => (i64::signum(a), 0),
-        (0, b) => (0, i64::signum(b)),
-        _ => bezout_helper(a, b, (1, 0), (0, 1))
+        _ => {
+            match div_rem(a, b) {
+                (_q, 0) => (0, i64::signum(b)),
+                (q, r) => bezout_helper(b, r, (0, 1), (1, -q))
+            }
+        }
     }
 }
 
@@ -105,6 +108,17 @@ mod tests {
             prop_assert!(m % b == 0);
             prop_assert_eq!(lcm(a/d, b/d), i64::abs((a/d)*(b/d)));
         }
+    }
+
+    fn bezout_value(a: i64, b: i64) -> i64 {
+        let (x, y) = bezout(a, b);
+        a*x + b*y
+    }
+
+    #[test]
+    fn test_bezout_explicit() {
+        assert_eq!(bezout_value(-15, -3), gcd(15, 3));
+        assert_eq!(bezout_value(10, -2), gcd(10, 2));
     }
 
     #[test]
