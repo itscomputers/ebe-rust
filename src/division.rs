@@ -11,6 +11,14 @@ pub fn div_rem(a: &Int, b: &Int) -> (Int, Int) {
     (quotient, remainder)
 }
 
+pub fn div(a: &Int, b: &Int) -> Int {
+    div_rem(a, b).0
+}
+
+pub fn rem(a: &Int, b: &Int) -> Int {
+    div_rem(a, b).1
+}
+
 pub fn euclidean_algorithm(a: Int, b: Int) -> String {
     if b.is_zero() {
         return String::from("");
