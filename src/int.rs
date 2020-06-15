@@ -12,10 +12,7 @@ pub struct Int {
 
 impl fmt::Display for Int {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match (self.value.sign(), self.value.to_str_radix(10)) {
-            (Sign::Minus, x) => write!(f, "-{}", x),
-            (_sign, x) => write!(f, "{}", x),
-        }
+        write!(f, "{}", self.value.to_str_radix(10))
     }
 }
 
@@ -383,8 +380,10 @@ mod tests {
 
     #[test]
     fn test_display() {
-        let a = "19287349187324901237492817349827349182734";
-        assert_eq!(format!("{}", a.to_int()), String::from(a));
+        let pos = "19287349187324901237492817349827349182734";
+        assert_eq!(format!("{}", pos.to_int()), String::from(pos));
+        let neg = "-1203948102938402193840912340981034980198";
+        assert_eq!(format!("{}", neg.to_int()), String::from(neg));
     }
 
     #[test]
