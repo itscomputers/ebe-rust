@@ -1,5 +1,4 @@
-use std::fmt;
-use std::ops;
+use std::{fmt, ops};
 use std::cmp::Ordering;
 use std::num::ParseIntError;
 use std::str::FromStr;
