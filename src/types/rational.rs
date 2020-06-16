@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use std::num::ParseIntError;
 use std::str::FromStr;
 
-use crate::int::Int;
+use crate::types::int::Int;
 use crate::division::gcd;
 
 #[derive(Debug, Clone)]

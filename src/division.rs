@@ -1,4 +1,4 @@
-use crate::int::Int;
+use crate::types::int::Int;
 
 pub fn div_rem(a: &Int, b: &Int) -> (Int, Int) {
     let remainder = if a.is_negative() {

@@ -1,4 +1,4 @@
-use crate::int::Int;
+use crate::types::int::Int;
 use crate::division::{bezout, rem};
 
 pub fn mod_inverse(a: &Int, m: &Int) -> Int {
