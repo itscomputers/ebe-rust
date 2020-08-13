@@ -1,74 +1,113 @@
-use crate::types::int::Int;
+use crate::types::int::{Int, ToInt};
 
-pub fn div_rem(a: &Int, b: &Int) -> (Int, Int) {
+//----------------------------
+// division with remainder
+
+#[derive(Debug)]
+pub struct DivRem {
+    pub quotient: Int,
+    pub remainder: Int
+}
+
+pub fn div_rem<T: ToInt, U: ToInt>(a: &T, b: &U) -> DivRem {
+    let a = a.to_int();
+    let b = b.to_int();
     let remainder = if a.is_negative() {
-        a % b + b.abs()
+        &a % &b + b.abs()
     } else {
-        a % b
+        &a % &b
     };
     let quotient = (a - &remainder) / b;
 
-    (quotient, remainder)
+    DivRem { quotient, remainder }
 }
 
-pub fn div(a: &Int, b: &Int) -> Int {
-    div_rem(a, b).0
+pub fn div<T: ToInt, U: ToInt>(a: &T, b: &U) -> Int {
+    div_rem(a, b).quotient
 }
 
-pub fn rem(a: &Int, b: &Int) -> Int {
-    div_rem(a, b).1
+pub fn rem<T: ToInt, U: ToInt>(a: &T, b: &U) -> Int {
+    div_rem(a, b).remainder
 }
 
-pub fn euclidean_algorithm(a: Int, b: Int) -> String {
-    if b.is_zero() {
-        return String::from("");
-    }
+//----------------------------
+// gcd and lcm
 
-    let (q, r) = div_rem(&a, &b);
-    let equation = format!("{} == {} * {} + {}", a, b, q, r);
-
-    format!("{}\n{}", equation, euclidean_algorithm(b, r))
-}
-
-pub fn gcd(a: &Int, b: &Int) -> Int {
-    match (a, b) {
+pub fn gcd<T: ToInt, U: ToInt>(a: &T, b: &U) -> Int {
+    match (&a.to_int(), &b.to_int()) {
         (a, b) if a.is_zero() && b.is_zero() => panic!("gcd(0, 0) is undefined"),
         (a, b) if b.is_zero() => a.abs(),
-        _ => gcd(&b, &(a % b))
+        _ => gcd(b, &rem(a, b))
     }
 }
 
-fn bezout_helper(a: &Int, b: &Int, prev: (Int, Int), curr: (Int, Int)) -> (Int, Int) {
-    if b.is_zero() {
-        return prev;
-    }
-    let (q, r) = div_rem(a, b);
-    let x = prev.0 - &curr.0 * &q;
-    let y = prev.1 - &curr.1 * q;
-
-    bezout_helper(b, &r, curr, (x, y))
+macro_rules! gcd {
+    ($($arg:expr),*) => {{
+        let mut temp_gcd = Int::from(1);
+        $({
+            temp_gcd = gcd(&temp_gcd, $arg);
+        })*
+        temp_gcd
+    }};
 }
 
-pub fn bezout(a: &Int, b: &Int) -> (Int, Int) {
-    match (a, b) {
-        (a, b) if a.is_zero() && b.is_zero() => panic!("gcd(0, 0) is undefined"),
-        (a, b) if b.is_zero() => (Int::from(a.signum()), Int::from(0)),
+pub fn lcm<T: ToInt, U: ToInt>(a: &T, b: &U) -> Int {
+    match (&a.to_int(), &b.to_int()) {
+        (a, b) if a.is_zero() => panic!("lcm(0, {}) is undefined", b),
+        (a, b) if b.is_zero() => panic!("lcm({}, 0) is undefined", a),
+        (a, b) => ((a / gcd(a, b)) * b).abs(),
+    }
+}
+
+macro_rules! lcm {
+    ($($arg:expr),*) => {{
+        let mut temp_lcm = Int::from(1);
+        $({
+            temp_lcm = lcm(&temp_lcm, $arg);
+        })*
+        temp_lcm
+    }};
+}
+
+//----------------------------
+// bezout
+
+#[derive(Debug)]
+pub struct BezoutSolution {
+    pub x: Int,
+    pub y: Int
+}
+
+fn next_bezout_solution(quotient: Int, prev: BezoutSolution, curr: &BezoutSolution) -> BezoutSolution {
+    let x = prev.x - &curr.x * &quotient;
+    let y = prev.y - &curr.y * quotient;
+    BezoutSolution { x, y }
+}
+
+fn bezout_recursive(a: Int, b: Int, prev: BezoutSolution, curr: BezoutSolution) -> BezoutSolution {
+    match (&a, &b) {
+        (a, b) if b.is_zero() && a.is_negative() => BezoutSolution { x: -prev.x, y: -prev.y },
+        (_, b) if b.is_zero() => prev,
         _ => {
-            match div_rem(a, b) {
-                (_q, r) if r.is_zero() => (Int::from(0), Int::from(b.signum())),
-                (q, r) => bezout_helper(b, &r, (Int::from(0), Int::from(1)), (Int::from(1), -q)),
-            }
+            let d = div_rem(&a, &b);
+            let next = next_bezout_solution(d.quotient, prev, &curr);
+            bezout_recursive(b, d.remainder, curr, next)
         }
     }
 }
 
-pub fn lcm(a: &Int, b: &Int) -> Int {
-    match (a, b) {
-        (a, b) if a.is_zero() => panic!("lcm(0, {}) is undefined", b),
-        (a, b) if b.is_zero() => panic!("lcm({}, 0) is undefined", a),
-        _ => ((a / gcd(a, b)) * b).abs(),
+pub fn bezout<T: ToInt, U: ToInt>(a: &T, b: &U) -> BezoutSolution {
+    match (&a.to_int(), &b.to_int()) {
+        (a, b) if a.is_zero() && b.is_zero() => panic!("gcd(0, 0) is undefined"),
+        (a, b) => {
+            let prev = BezoutSolution { x: Int::from(1), y: Int::from(0) };
+            let curr = BezoutSolution { x: Int::from(0), y: Int::from(1) };
+            bezout_recursive(a.clone(), b.clone(), prev, curr)
+        }
     }
 }
+
+//==========================================================
 
 #[cfg(test)]
 mod tests {
@@ -78,55 +117,77 @@ mod tests {
     proptest! {
         #[test]
         fn test_div_rem_props(a: i64, b: i64) {
-            let a = Int::from(a);
-            let b = Int::from(b);
-            prop_assume!(b.is_nonzero());
-            let (q, r) = div_rem(&a, &b);
-            prop_assert!(r.is_positive() || r.is_zero());
-            prop_assert!(r < b.abs());
-            prop_assert_eq!(q*b + r, a);
+            prop_assume!(b != 0);
+            let d = div_rem(&a, &b);
+            prop_assert!(d.remainder.is_positive() || d.remainder.is_zero());
+            prop_assert!(d.remainder < Int::from(b).abs());
+            prop_assert_eq!(d.quotient*b + d.remainder, Int::from(a));
         }
 
         #[test]
         fn test_gcd_props(a: i64, b: i64) {
-            let a = Int::from(a);
-            let b = Int::from(b);
-            prop_assume!(a.is_nonzero() || b.is_nonzero());
+            prop_assume!(a != 0 || b != 0);
             let d = gcd(&a, &b);
             prop_assert!(d.is_positive());
-            prop_assert!((&a % &d).is_zero());
-            prop_assert!((&b % &d).is_zero());
-            prop_assert_eq!(gcd(&(&a/&d), &(b/d)), Int::from(1));
+            prop_assert!((Int::from(a) % &d).is_zero());
+            prop_assert!((Int::from(b) % &d).is_zero());
+
+            let reduced_a = a / &d;
+            let reduced_b = b / d;
+            prop_assert_eq!(gcd(&reduced_a, &reduced_b), Int::from(1));
         }
 
         #[test]
-        fn test_bezout(a: i64, b: i64) {
-            let a = Int::from(a);
-            let b = Int::from(b);
-            prop_assume!(a.is_nonzero() || b.is_nonzero());
-            let (x, y) = bezout(&a, &b);
-            prop_assert_eq!(&a*x + &b*y, gcd(&a, &b));
+        fn test_gcd_multiple(a: i64, b: i64, c: i64) {
+            prop_assume!(a != 0 || b != 0 || c != 0);
+            let d = gcd!(&a, &b, &c);
+            prop_assert!(d.is_positive());
+            prop_assert!((Int::from(a) % &d).is_zero());
+            prop_assert!((Int::from(b) % &d).is_zero());
+            prop_assert!((Int::from(c) % &d).is_zero());
+            let reduced_a = a / &d;
+            let reduced_b = b / &d;
+            let reduced_c = c / d;
+            prop_assert_eq!(gcd!(&reduced_a, &reduced_b, &reduced_c), Int::from(1));
         }
 
         #[test]
         fn test_lcm_props(a: i64, b: i64) {
-            let a = Int::from(a);
-            let b = Int::from(b);
-            prop_assume!(a.is_nonzero() && b.is_nonzero());
-            let d = gcd(&a, &b);
+            prop_assume!(a != 0 && b != 0);
             let m = lcm(&a, &b);
             prop_assert!(m.is_positive());
             prop_assert!((&m % &a).is_zero());
-            prop_assert!((m % &b).is_zero());
-            prop_assert_eq!(lcm(&(&a/&d), &(&b/&d)), ((a/&d)*(b/d)).abs());
+            prop_assert!((&m % &b).is_zero());
+
+            let reduced_a = &m / &a;
+            let reduced_b = m / &b;
+            prop_assert_eq!(gcd(&reduced_a, &reduced_b), Int::from(1));
+        }
+
+        #[test]
+        fn test_lcm_multiple(a: i64, b: i64, c: i64) {
+            prop_assume!(a != 0 && b != 0 && c != 0);
+            let m = lcm!(&a, &b, &c);
+            prop_assert!(m.is_positive());
+            prop_assert!((&m % Int::from(a)).is_zero());
+            prop_assert!((&m % Int::from(b)).is_zero());
+            prop_assert!((&m % Int::from(c)).is_zero());
+            let reduced_a = &m / a;
+            let reduced_b = &m / b;
+            let reduced_c = m / c;
+            prop_assert_eq!(gcd!(&reduced_a, &reduced_b, &reduced_c), Int::from(1));
+        }
+
+        #[test]
+        fn test_bezout(a: i64, b: i64) {
+            prop_assume!(a != 0 || b != 0);
+            prop_assert!(bezout_value_eq_gcd(a, b));
         }
     }
 
-    fn bezout_value_eq_gcd(a: i32, b: i32) -> bool {
-        let a = Int::from(a);
-        let b = Int::from(b);
-        let (x, y) = bezout(&a, &b);
-        let bezout_value = &a*x + &b*y;
+    fn bezout_value_eq_gcd(a: i64, b: i64) -> bool {
+        let solution = bezout(&a, &b);
+        let bezout_value = &a*solution.x + &b*solution.y;
         let gcd_value = gcd(&a, &b);
         bezout_value == gcd_value
     }
@@ -135,12 +196,6 @@ mod tests {
     fn test_bezout_explicit() {
         assert!(bezout_value_eq_gcd(-15, -3));
         assert!(bezout_value_eq_gcd(10, -2));
-    }
-
-    #[test]
-    fn test_euclidean_algorithm() {
-        let s = "322 == 70 * 4 + 42\n70 == 42 * 1 + 28\n42 == 28 * 1 + 14\n28 == 14 * 2 + 0\n";
-        assert_eq!(euclidean_algorithm(Int::from(322), Int::from(70)).as_str(), s);
     }
 
     #[test]
